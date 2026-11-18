@@ -1,4 +1,4 @@
-name: Sahabino
+name: sahabino
 services:
   postgres:
     image: docker-mirror.liara.ir/library/postgres:15-alpine
