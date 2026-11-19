@@ -1,7 +1,7 @@
 from google_play_scraper.exceptions import NotFoundError
 from scraper import PlayStoreScraper
 
-from tests.builders import StubPlayStore, stub_scraper
+from tests.builders import StubPlayStore, stub_scraper, raw_review
 
 
 def test_fetches_app_metrics_from_primary_locale():
@@ -67,3 +67,30 @@ def test_retries_transient_error_and_succeeds(monkeypatch):
     assert metrics is not None
     assert attempts == 3
     assert metrics.min_installs == 2000
+
+
+def test_paginates_reviews_and_respects_target_count(monkeypatch):
+    monkeypatch.setattr("scraper.time.sleep", lambda _: None)
+    tokens_seen = []
+
+    def fake_reviews(package_name: str, **kwargs):
+        token = kwargs.get("continuation_token")
+        tokens_seen.append(token)
+        if token is None:
+            return [raw_review("r1"), raw_review("r2")], "page-2"
+        return [raw_review("r3"), raw_review("r4")], None
+
+    scraper = PlayStoreScraper(fetch_reviews_page=fake_reviews)
+    result = scraper.get_latest_reviews("org.telegram.messenger", count=3)
+
+    assert [item["review_id"] for item in result] == ["r1", "r2", "r3"]
+    assert tokens_seen == [None, "page-2"]
+
+
+def test_deduplicates_reviews_across_locales(monkeypatch):
+    monkeypatch.setattr("scraper.time.sleep", lambda _: None)
+    scraper = stub_scraper(StubPlayStore(raw_reviews=[raw_review("dup-1"), raw_review("dup-2")]))
+
+    result = scraper.get_latest_reviews("org.telegram.messenger", count=10)
+
+    assert [item["review_id"] for item in result] == ["dup-1", "dup-2"]
