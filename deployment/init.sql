@@ -64,7 +64,6 @@ VALUES
   ('WhatsApp', 'com.whatsapp', 'Messaging', TRUE),
   ('MyIrancell', 'com.myirancell', 'Operator', TRUE),
   ('MyMci', 'ir.mci.ecareapp', 'Operator', TRUE),
-  ('MyRightel', 'ir.rightel.myrightel', 'Operator', TRUE),
   ('Aparat', 'com.sabaidea.aparat', 'Video Streaming', TRUE),
   ('Filimo', 'com.sabaidea.filimo', 'Video Streaming', TRUE),
   ('Tamashakhonehtv', 'ir.tamashakhonehtv', 'Video Streaming', TRUE),
@@ -75,5 +74,6 @@ VALUES
   ('Pinno', 'app.pinno', 'Dating & Chat', TRUE),
   ('Instagram', 'com.instagram.android', 'Social Media', TRUE),
   ('Facebook', 'com.facebook.katana', 'Social Media', TRUE),
-  ('TikTok', 'com.zhiliaoapp.musically', 'Social Media', TRUE)
+  ('TikTok', 'com.zhiliaoapp.musically', 'Social Media', TRUE),
+  ('X', 'com.twitter.android', 'Social Media', TRUE)
 ON CONFLICT (package_name) DO NOTHING;
