@@ -1,0 +1,7 @@
+cat << 'EOF' > ~/shb/.dockerignore
+.git
+__pycache__
+.pytest_cache
+data
+*.pyc
+EOF
