@@ -75,5 +75,7 @@ VALUES
   ('Instagram', 'com.instagram.android', 'Social Media', TRUE),
   ('Facebook', 'com.facebook.katana', 'Social Media', TRUE),
   ('TikTok', 'com.zhiliaoapp.musically', 'Social Media', TRUE),
-  ('X', 'com.twitter.android', 'Social Media', TRUE)
+  ('X', 'com.twitter.android', 'Social Media', TRUE),
+  ('Eitaa', 'ir.eitaa.messenger', 'Messaging', TRUE),
+  ('Bale', 'ir.bale.messenger', 'Messaging', TRUE)
 ON CONFLICT (package_name) DO NOTHING;
