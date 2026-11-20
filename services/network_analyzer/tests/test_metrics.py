@@ -99,7 +99,7 @@ def test_parses_pcapng_with_raw_ip_datalink_like_pcapdroid(tmp_path):
         SERVER_IP,
         CLIENT_PORT,
         SERVER_PORT,
-        flags=dpkt.tcp.TH_PSH | dpkt.tcp.TH_ACK,
+        flags=dpkt.tcp.TH_PUSH | dpkt.tcp.TH_ACK,
         sequence_number=1,
         acknowledgment_number=1,
         payload=b"hello",
