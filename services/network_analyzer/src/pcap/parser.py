@@ -1,4 +1,3 @@
-cat << 'EOF' > ~/shb/services/network_analyzer/src/pcap/parser.py
 import enum
 import socket
 import struct
