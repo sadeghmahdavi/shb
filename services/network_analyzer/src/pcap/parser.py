@@ -1,6 +1,8 @@
+cat << 'EOF' > ~/shb/services/network_analyzer/src/pcap/parser.py
 import enum
 import socket
 import struct
+from bisect import bisect_left
 from pathlib import Path
 from typing import BinaryIO
 
@@ -16,13 +18,7 @@ PCAPNG_MAGIC = b"\x0a\x0d\x0d\x0a"
 
 
 class DatalinkType(enum.IntEnum):
-    """DLT (datalink type) stored in the libpcap file header: it says what precedes the IP packet in each record.
-
-    ETHERNET (1): a 14-byte Ethernet header precedes the IP packet — captures made on a physical network card.
-    RAW_IP (101): the IP packet starts at byte zero — captures made on tun/VPN interfaces. The pcap file
-        format always stores 101 for raw IP; 12/14 are BSD-era values that never appear in capture files.
-    LINUX_SLL (113): a 16-byte Linux cooked header precedes the IP packet — captures made with `tcpdump -i any`.
-    """
+    """DLT (datalink type) stored in the libpcap file header: it says what precedes the IP packet in each record."""
 
     ETHERNET = 1
     RAW_IP = 101
@@ -30,11 +26,9 @@ class DatalinkType(enum.IntEnum):
 
 
 class _FlowAccumulator:
-    """Mutable per-flow bookkeeping the parser folds into one FlowRecord: byte counters plus the TCP-only
-    retransmission, zero-window and handshake state."""
+    """Mutable per-flow bookkeeping the parser folds into one FlowRecord."""
 
     def __init__(self, flow_key: FlowKey) -> None:
-        """Start with empty counters, no recorded handshake and no sent byte ranges."""
         self.flow_key = flow_key
         self.total_frame_bytes = 0
         self.payload_bytes = 0
@@ -43,7 +37,8 @@ class _FlowAccumulator:
         self.reset_count = 0
         self.handshake_rtt: float | None = None
         self._syn_timestamp: float | None = None
-        self._sent_ranges: dict[str, list[tuple[int, int]]] = {}
+        self._sent_starts: dict[str, list[int]] = {}
+        self._sent_ends: dict[str, list[int]] = {}
 
     def add_tcp_segment(self, timestamp: float, segment: dpkt.tcp.TCP, frame_length: int, source_ip: str) -> None:
         self.total_frame_bytes += frame_length
@@ -75,10 +70,27 @@ class _FlowAccumulator:
         if seq_length > 0:
             seq_start = segment.seq
             seq_end = seq_start + seq_length
-            sent_ranges = self._sent_ranges.setdefault(source_ip, [])
-            if any(seq_start < prev_end and seq_end > prev_start for prev_start, prev_end in sent_ranges):
+            starts = self._sent_starts.setdefault(source_ip, [])
+            ends = self._sent_ends.setdefault(source_ip, [])
+
+            idx = bisect_left(starts, seq_start)
+            if (idx > 0 and ends[idx - 1] > seq_start) or (idx < len(starts) and starts[idx] < seq_end):
                 self.retransmission_count += 1
-            sent_ranges.append((seq_start, seq_end))
+
+            new_start, new_end = seq_start, seq_end
+            left = idx
+            if left > 0 and ends[left - 1] >= new_start:
+                left -= 1
+                new_start = min(new_start, starts[left])
+                new_end = max(new_end, ends[left])
+
+            right = idx
+            while right < len(starts) and starts[right] <= new_end:
+                new_end = max(new_end, ends[right])
+                right += 1
+
+            starts[left:right] = [new_start]
+            ends[left:right] = [new_end]
 
     def add_udp_datagram(self, datagram: dpkt.udp.UDP, frame_length: int) -> None:
         self.total_frame_bytes += frame_length
@@ -104,13 +116,6 @@ class PcapParser:
     FRAMING_ERRORS: tuple[type[Exception], ...] = (ValueError, EOFError, dpkt.UnpackError, struct.error)
 
     def parse(self, pcap_path: Path) -> ParsedCapture:
-        """Dissect a capture into one record per TCP/UDP flow, plus the non-flow byte total.
-
-        Flows are keyed by their canonical five-tuple, so both directions of a flow and both
-        protocols on the same four-tuple are handled. Non-flow traffic (ARP, ICMP, ...) only
-        counts its frame bytes. Individually malformed packets are skipped and counted; an
-        unreadable file raises PcapParseError.
-        """
         try:
             capture = self._parse(pcap_path)
         except OSError as error:
@@ -210,3 +215,4 @@ class PcapParser:
             other_frame_bytes=other_frame_bytes,
             malformed_packet_count=malformed_packet_count,
         )
+EOF
