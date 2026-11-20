@@ -214,4 +214,3 @@ class PcapParser:
             other_frame_bytes=other_frame_bytes,
             malformed_packet_count=malformed_packet_count,
         )
-EOF
